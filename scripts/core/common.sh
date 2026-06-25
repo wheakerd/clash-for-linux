@@ -1145,8 +1145,104 @@ guard_unsafe_sudo_auto_install() {
   fi
 }
 
+install_sudo_available() {
+  command -v sudo >/dev/null 2>&1 || return 1
+  sudo -n true >/dev/null 2>&1 && return 0
+  id -nG 2>/dev/null | tr ' ' '\n' | grep -Eq '^(sudo|wheel|admin)$'
+}
+
+install_scope_choice_tty() {
+  [ -t 0 ] && [ -t 2 ]
+}
+
+install_prompt_scope_choice() {
+  local selected=0 key
+  local root_label="root 安装（推荐）"
+  local user_label="user 安装"
+  local root_desc="安装到系统命令路径，支持 systemd 后端，适合长期运行、开机自启、全局可用。"
+  local user_desc="不写系统目录，安装到当前用户环境，适合无 root 权限或只给当前用户使用。"
+
+  if ! install_scope_choice_tty; then
+    warn "检测到当前用户可使用 sudo；非交互终端默认使用 user 安装"
+    printf 'ℹ %s\n' "如需 root 安装，请显式执行：sudo bash install.sh system" >&2
+    echo "user"
+    return 0
+  fi
+
+  while true; do
+    printf '\033[2J\033[H' >&2
+    echo "检测到当前用户可使用 sudo，请选择安装方式：" >&2
+    echo >&2
+
+    if [ "$selected" -eq 0 ]; then
+      echo "> $root_label" >&2
+    else
+      echo "  $root_label" >&2
+    fi
+    echo "  $root_desc" >&2
+    echo >&2
+
+    if [ "$selected" -eq 1 ]; then
+      echo "> $user_label" >&2
+    else
+      echo "  $user_label" >&2
+    fi
+    echo "  $user_desc" >&2
+    echo >&2
+    echo "使用 ↑/↓ 或 j/k 移动，Enter 确认。" >&2
+
+    IFS= read -rsn1 key || {
+      echo "user"
+      return 0
+    }
+
+    case "$key" in
+      "")
+        if [ "$selected" -eq 0 ]; then
+          echo "system"
+        else
+          echo "user"
+        fi
+        return 0
+        ;;
+      j|J)
+        selected=1
+        ;;
+      k|K)
+        selected=0
+        ;;
+      $'\033')
+        IFS= read -rsn2 -t 0.1 key || key=""
+        case "$key" in
+          "[A") selected=0 ;;
+          "[B") selected=1 ;;
+        esac
+        ;;
+      1)
+        echo "system"
+        return 0
+        ;;
+      2)
+        echo "user"
+        return 0
+        ;;
+    esac
+  done
+}
+
+rerun_install_as_root_system() {
+  local install_script
+
+  install_script="$PROJECT_DIR/install.sh"
+  [ -f "$install_script" ] || die "未找到安装脚本：$install_script"
+
+  echo "👉 将使用 root/system 方式重新执行安装"
+  exec sudo bash "$install_script" system
+}
+
 detect_install_scope() {
   local requested="${1:-auto}"
+  local selected_scope
 
   case "$requested" in
     system)
@@ -1159,7 +1255,23 @@ detect_install_scope() {
       if [ "$(id -u)" -eq 0 ]; then
         INSTALL_SCOPE="system"
       else
-        INSTALL_SCOPE="user"
+        if install_sudo_available; then
+          selected_scope="$(install_prompt_scope_choice)"
+          case "$selected_scope" in
+            system)
+              rerun_install_as_root_system
+              return $?
+              ;;
+            user)
+              INSTALL_SCOPE="user"
+              ;;
+            *)
+              die "未知安装选择：$selected_scope"
+              ;;
+          esac
+        else
+          INSTALL_SCOPE="user"
+        fi
       fi
       ;;
     *)
