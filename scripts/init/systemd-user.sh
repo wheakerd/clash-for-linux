@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 install_systemd_user_entry() {
-  local user_dir unit_file
-  user_dir="$HOME/.config/systemd/user"
+  local user_dir unit_file home_dir
+  home_dir="$(user_home_dir)"
+  user_dir="$home_dir/.config/systemd/user"
   unit_file="$user_dir/$(service_unit_name)"
 
   mkdir -p "$user_dir"
@@ -14,9 +15,9 @@ After=default.target
 
 [Service]
 Type=forking
-ExecStart=$HOME/.local/bin/clashctl start-direct
-ExecStop=$HOME/.local/bin/clashctl stop-direct
-ExecReload=$HOME/.local/bin/clashctl restart-direct
+ExecStart=$home_dir/.local/bin/clashctl start-direct
+ExecStop=$home_dir/.local/bin/clashctl stop-direct
+ExecReload=$home_dir/.local/bin/clashctl restart-direct
 PIDFile=$RUNTIME_DIR/mihomo.pid
 WorkingDirectory=$PROJECT_DIR
 Restart=on-failure
@@ -38,8 +39,9 @@ EOF
 }
 
 remove_systemd_user_entry() {
-  local unit_file
-  unit_file="$HOME/.config/systemd/user/$(service_unit_name)"
+  local unit_file home_dir
+  home_dir="$(user_home_dir)"
+  unit_file="$home_dir/.config/systemd/user/$(service_unit_name)"
 
   if [ -f "$unit_file" ]; then
     systemctl --user disable "$(service_unit_name)" >/dev/null 2>&1 || true
