@@ -14,11 +14,9 @@ Description=clash-for-linux (user)
 After=default.target
 
 [Service]
-Type=forking
-ExecStart=$home_dir/.local/bin/clashctl start-direct
-ExecStop=$home_dir/.local/bin/clashctl stop-direct
-ExecReload=$home_dir/.local/bin/clashctl restart-direct
-PIDFile=$RUNTIME_DIR/mihomo.pid
+Type=simple
+ExecStart=$home_dir/.local/bin/clashctl run-direct
+ExecStopPost=/bin/rm -f $RUNTIME_DIR/mihomo.pid
 WorkingDirectory=$PROJECT_DIR
 Restart=on-failure
 RestartSec=3
@@ -107,8 +105,16 @@ systemd_user_service_status_text() {
 }
 
 systemd_user_service_logs() {
-  journalctl --user -u "$(service_unit_name)" -n 200 --no-pager 2>/dev/null || {
-    echo "未获取到用户级 systemd 服务日志"
-    return 0
-  }
+  echo "== systemctl --user status =="
+  systemctl --user status "$(service_unit_name)" --no-pager -l 2>/dev/null || echo "未获取到用户级 systemd 服务状态"
+  echo
+  echo "== journalctl --user =="
+  journalctl --user -u "$(service_unit_name)" -n 200 --no-pager 2>/dev/null || echo "未获取到用户级 systemd journal 日志"
+  echo
+  echo "== mihomo log =="
+  if [ -f "$LOG_DIR/mihomo.out.log" ]; then
+    tail -n 200 "$LOG_DIR/mihomo.out.log"
+  else
+    echo "mihomo 日志文件不存在：$LOG_DIR/mihomo.out.log"
+  fi
 }

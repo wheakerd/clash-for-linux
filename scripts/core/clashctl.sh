@@ -7382,6 +7382,11 @@ cmd_start_direct() {
   start_runtime
 }
 
+cmd_run_direct() {
+  prepare
+  run_runtime_foreground
+}
+
 cmd_stop_direct() {
   prepare
   stop_runtime
@@ -7801,6 +7806,7 @@ case "$cmd" in
   upgrade)        cmd_upgrade "$@" ;;
   update)         cmd_update "$@" ;;
   completion)     cmd_completion "$@" ;;
+  run-direct)     cmd_run_direct "$@" ;;
   start-direct)   cmd_start_direct "$@" ;;
   stop-direct)    cmd_stop_direct "$@" ;;
   restart-direct) cmd_restart_direct "$@" ;;

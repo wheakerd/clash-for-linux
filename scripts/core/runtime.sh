@@ -533,9 +533,10 @@ wait_runtime_controller_ready() {
   return 1
 }
 
-start_runtime() {
+prepare_runtime_start() {
   local config_file="$RUNTIME_DIR/config.yaml"
 
+  mkdir -p "$RUNTIME_DIR" "$LOG_DIR"
   resolve_runtime_kernel
   if [ -s "$config_file" ]; then
     ensure_mihomo_geodata_ready "$config_file" || die "因 GEOIP 依赖未就绪，当前配置无法启动：$config_file"
@@ -543,6 +544,12 @@ start_runtime() {
 
   ensure_runtime_config_ready
   ensure_mihomo_geodata_ready "$config_file" || die "因 GEOIP 依赖未就绪，当前配置无法启动：$config_file"
+}
+
+start_runtime() {
+  local config_file="$RUNTIME_DIR/config.yaml"
+
+  prepare_runtime_start
 
   if [ -f "$RUNTIME_DIR/mihomo.pid" ]; then
     local old_pid
@@ -573,6 +580,18 @@ start_runtime() {
   fi
 
   success "$(runtime_kernel_name) 已启动：pid=$(cat "$RUNTIME_DIR/mihomo.pid")"
+}
+
+run_runtime_foreground() {
+  local config_file="$RUNTIME_DIR/config.yaml"
+
+  prepare_runtime_start
+
+  rm -f "$RUNTIME_DIR/mihomo.pid" 2>/dev/null || true
+  echo "$$" > "$RUNTIME_DIR/mihomo.pid"
+
+  exec "$(runtime_kernel_bin)" -f "$config_file" -d "$RUNTIME_DIR" \
+    >> "$LOG_DIR/mihomo.out.log" 2>&1
 }
 
 stop_runtime() {

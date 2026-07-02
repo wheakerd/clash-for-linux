@@ -11,11 +11,9 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=forking
-ExecStart=/usr/local/bin/clashctl start-direct
-ExecStop=/usr/local/bin/clashctl stop-direct
-ExecReload=/usr/local/bin/clashctl restart-direct
-PIDFile=$RUNTIME_DIR/mihomo.pid
+Type=simple
+ExecStart=/usr/local/bin/clashctl run-direct
+ExecStopPost=/bin/rm -f $RUNTIME_DIR/mihomo.pid
 WorkingDirectory=$PROJECT_DIR
 Restart=on-failure
 RestartSec=3
@@ -103,8 +101,16 @@ systemd_service_status_text() {
 }
 
 systemd_service_logs() {
-  journalctl -u "$(service_unit_name)" -n 200 --no-pager 2>/dev/null || {
-    echo "未获取到 systemd 服务日志"
-    return 0
-  }
+  echo "== systemctl status =="
+  systemctl status "$(service_unit_name)" --no-pager -l 2>/dev/null || echo "未获取到 systemd 服务状态"
+  echo
+  echo "== journalctl =="
+  journalctl -u "$(service_unit_name)" -n 200 --no-pager 2>/dev/null || echo "未获取到 systemd journal 日志"
+  echo
+  echo "== mihomo log =="
+  if [ -f "$LOG_DIR/mihomo.out.log" ]; then
+    tail -n 200 "$LOG_DIR/mihomo.out.log"
+  else
+    echo "mihomo 日志文件不存在：$LOG_DIR/mihomo.out.log"
+  fi
 }

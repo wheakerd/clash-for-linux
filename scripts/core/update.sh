@@ -83,9 +83,10 @@ refresh_installed_entry_files() {
   # shellcheck source=scripts/core/common.sh
   source "$PROJECT_DIR/scripts/core/common.sh"
 
-  info "正在刷新命令入口与 shell profile"
+  info "正在刷新命令入口、shell profile 与运行后端入口"
   install_clashctl_entry
   install_shell_alias_entry
+  install_runtime_entry
 }
 
 remove_mihomo_binary() {
