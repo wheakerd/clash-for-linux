@@ -1515,6 +1515,22 @@ print_select_feedback() {
   ui_blank
 }
 
+select_usage() {
+  cat <<'EOF'
+Usage:
+  clashctl select
+  clashctl select <策略组> <节点>
+
+Examples:
+  clashctl select
+  clashctl select "🚀 节点选择" "日本 01"
+
+Notes:
+  不带参数时进入交互选择。
+  带参数时直接切换指定策略组到指定节点。
+EOF
+}
+
 print_sub_enable_feedback() {
   local name="$1"
   local health fail_count
@@ -5743,7 +5759,7 @@ tun_unit_capability_text() {
       if command -v systemctl >/dev/null 2>&1; then
         content="$(systemctl --user cat "$unit" 2>/dev/null || true)"
       fi
-      unit_file="$HOME/.config/systemd/user/$unit"
+      unit_file="$(user_home_dir)/.config/systemd/user/$unit"
       ;;
     *)
       echo "非 systemd 后端，不适用 unit capability 声明"
@@ -6746,9 +6762,15 @@ cmd_health() {
 }
 
 cmd_select() {
-  prepare
+  case "${1:-}" in
+    -h|--help|help)
+      select_usage
+      return 0
+      ;;
+  esac
 
   if [ -z "${1:-}" ]; then
+    prepare
     print_select_context || return $?
     proxy_select_interactive_guarded
     return 0
@@ -7725,6 +7747,28 @@ proxy_select_interactive_guarded() {
     print_select_feedback "$group"
     return 0
   done
+}
+
+proxy_select_direct() {
+  local group="${1:-}"
+  local node="${2:-}"
+
+  if [ "$#" -ne 2 ]; then
+    die_usage "select 参数不合法" "clashctl select <策略组> <节点>"
+  fi
+
+  prepare
+
+  if ! status_is_running; then
+    die_state "代理内核未运行" "clashon"
+  fi
+
+  if ! proxy_controller_reachable 2>/dev/null; then
+    die_state "控制器不可访问" "clashctl doctor"
+  fi
+
+  proxy_group_select "$group" "$node"
+  print_select_feedback "$group"
 }
 
 cmd="${1:-}"

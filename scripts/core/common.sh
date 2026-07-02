@@ -22,6 +22,31 @@ warn()     { printf '⚠ %s\n' "$*" >&2; }
 error()    { printf '✘ %s\n' "$*" >&2; }
 die()      { error "$*"; exit 1; }
 
+user_home_dir() {
+  local home_value uid
+
+  if [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME"
+    return 0
+  fi
+
+  uid="$(id -u 2>/dev/null || true)"
+  if [ -n "${uid:-}" ] && command -v getent >/dev/null 2>&1; then
+    home_value="$(getent passwd "$uid" 2>/dev/null | awk -F: 'NR == 1 {print $6}')"
+  fi
+
+  if [ -z "${home_value:-}" ] && [ -n "${uid:-}" ] && [ -r /etc/passwd ]; then
+    home_value="$(awk -F: -v uid="$uid" '$3 == uid {print $6; exit}' /etc/passwd 2>/dev/null || true)"
+  fi
+
+  if [ -z "${home_value:-}" ]; then
+    die_state "无法确定当前用户 HOME" "请先设置 HOME 后重试：export HOME=/path/to/home"
+  fi
+
+  export HOME="$home_value"
+  printf '%s\n' "$home_value"
+}
+
 ui_color() {
     local color="$1"
     local msg="$2"
@@ -1282,7 +1307,7 @@ detect_install_scope() {
   if [ "$INSTALL_SCOPE" = "system" ]; then
     INSTALL_HOME="${CLASH_INSTALL_HOME:-/opt/clash-for-linux}"
   else
-    INSTALL_HOME="${CLASH_INSTALL_HOME:-$HOME/.local/share/clash-for-linux}"
+    INSTALL_HOME="${CLASH_INSTALL_HOME:-$(user_home_dir)/.local/share/clash-for-linux}"
   fi
 
   RUNTIME_DIR="$PROJECT_DIR/runtime"
@@ -2571,12 +2596,15 @@ runtime_backend() {
 }
 
 shell_profile_file() {
+  local home_dir
+
   if [ "$INSTALL_SCOPE" = "system" ]; then
     echo "/etc/profile.d/clash-for-linux.sh"
     return 0
   fi
 
-  echo "$HOME/.bashrc"
+  home_dir="$(user_home_dir)"
+  echo "$home_dir/.bashrc"
 }
 
 alias_source_file() {
@@ -2584,10 +2612,13 @@ alias_source_file() {
 }
 
 completion_dir() {
+  local home_dir
+
   if [ "$INSTALL_SCOPE" = "system" ]; then
     echo "/etc/profile.d"
   else
-    echo "$HOME/.config/clash-for-linux"
+    home_dir="$(user_home_dir)"
+    echo "$home_dir/.config/clash-for-linux"
   fi
 }
 
@@ -2616,7 +2647,7 @@ clashctl_bin_entry_target() {
 }
 
 ensure_command_install_dir_in_shell_path() {
-  local install_dir shell_rc
+  local install_dir shell_rc home_dir
 
   install_dir="$(command_install_dir)"
 
@@ -2626,7 +2657,8 @@ ensure_command_install_dir_in_shell_path() {
       ;;
   esac
 
-  for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+  home_dir="$(user_home_dir)"
+  for shell_rc in "$home_dir/.bashrc" "$home_dir/.zshrc" "$home_dir/.profile"; do
     [ -n "${shell_rc:-}" ] || continue
     touch "$shell_rc"
     if ! grep -Fq "$install_dir" "$shell_rc" 2>/dev/null; then
@@ -2699,9 +2731,10 @@ EOF
 }
 
 cleanup_legacy_shell_entries() {
-  local shell_rc
+  local shell_rc home_dir
 
-  for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+  home_dir="$(user_home_dir)"
+  for shell_rc in "$home_dir/.bashrc" "$home_dir/.zshrc" "$home_dir/.profile"; do
     [ -f "$shell_rc" ] || continue
 
     sed -i '\|/root/clashctl/scripts/cmd/clashctl.sh|d' "$shell_rc" 2>/dev/null || true
@@ -2711,7 +2744,7 @@ cleanup_legacy_shell_entries() {
 }
 
 install_shell_alias_entry() {
-  local profile_file alias_file shell_rc bash_completion_file zsh_completion_file
+  local profile_file alias_file shell_rc bash_completion_file zsh_completion_file home_dir
 
   cleanup_legacy_shell_entries
 
@@ -2747,7 +2780,8 @@ esac
 EOF
   chmod +x "$profile_file"
 
-  for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+  home_dir="$(user_home_dir)"
+  for shell_rc in "$home_dir/.bashrc" "$home_dir/.zshrc" "$home_dir/.profile"; do
     install_rc_source_block "$shell_rc" "$profile_file"
   done
 
@@ -2780,8 +2814,9 @@ remove_shell_alias_entry() {
   rm -f "$profile_file" 2>/dev/null || true
 
   if [ "$INSTALL_SCOPE" = "user" ]; then
-    local shell_rc
-    for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+    local shell_rc home_dir
+    home_dir="$(user_home_dir)"
+    for shell_rc in "$home_dir/.bashrc" "$home_dir/.zshrc" "$home_dir/.profile"; do
       [ -f "$shell_rc" ] || continue
       awk -v profile="$profile_file" '
         index($0, profile) == 0 { print }
@@ -2803,18 +2838,21 @@ install_runtime_ready() {
 }
 
 shell_rc_files() {
+  local home_dir
+
   if [ "$INSTALL_SCOPE" = "system" ]; then
     echo "/etc/profile.d/clash-for-linux.sh"
     return 0
   fi
 
-  echo "$HOME/.bashrc"
-  echo "$HOME/.zshrc"
-  echo "$HOME/.profile"
+  home_dir="$(user_home_dir)"
+  echo "$home_dir/.bashrc"
+  echo "$home_dir/.zshrc"
+  echo "$home_dir/.profile"
 }
 
 user_local_bin_dir() {
-  echo "$HOME/.local/bin"
+  echo "$(user_home_dir)/.local/bin"
 }
 
 command_install_dir() {
@@ -2825,7 +2863,7 @@ command_install_dir() {
     fi
     echo "/usr/local/bin"
   else
-    echo "$HOME/.local/bin"
+    echo "$(user_home_dir)/.local/bin"
   fi
 }
 
@@ -2833,7 +2871,7 @@ profile_entry_file() {
   if [ "$INSTALL_SCOPE" = "system" ]; then
     echo "/etc/profile.d/clash-for-linux.sh"
   else
-    echo "$HOME/.config/clash-for-linux/profile.sh"
+    echo "$(user_home_dir)/.config/clash-for-linux/profile.sh"
   fi
 }
 
