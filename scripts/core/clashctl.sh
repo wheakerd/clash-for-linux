@@ -196,6 +196,7 @@ print_on_feedback() {
 cmd_on() {
   local relay_switch
   local relay_switch_file relay_err_file relay_rc
+  local service_action=""
   local system_proxy_rc system_proxy_degraded="false"
 
   trap 'rc=$?; ui_error "开启代理失败：cmd_on 在第 ${LINENO} 行执行失败：${BASH_COMMAND}（返回码：${rc}）"; ui_next "clashctl logs service"; exit "$rc"' ERR
@@ -225,17 +226,24 @@ cmd_on() {
 
   if status_is_running 2>/dev/null && ! proxy_controller_reachable 2>/dev/null; then
     ui_warn "检测到内核已运行但控制器不可访问，正在重启以加载当前配置"
+    service_action="restart"
     service_restart || die_state "控制器启动失败：内核重启未完成" "clashctl logs mihomo"
   else
+    service_action="start"
     service_start || die_state "控制器启动失败：内核启动未完成" "clashctl logs mihomo"
   fi
 
   if ! wait_runtime_controller_ready 8; then
-    ui_warn "控制器未在预期时间内可访问，正在重启内核重试"
-    service_restart || die_state "控制器启动失败：内核重启未完成" "clashctl logs mihomo"
-    if ! wait_runtime_controller_ready 8; then
+    if [ "$service_action" = "restart" ] && [ "$(runtime_backend 2>/dev/null || true)" = "script" ]; then
       status_is_running 2>/dev/null || die_state "控制器启动失败：内核未运行" "clashctl logs mihomo"
       ui_warn "控制器暂不可访问，继续开启本地代理；请稍后执行 clashctl doctor"
+    else
+      ui_warn "控制器未在预期时间内可访问，正在重启内核重试"
+      service_restart || die_state "控制器启动失败：内核重启未完成" "clashctl logs mihomo"
+      if ! wait_runtime_controller_ready 8; then
+        status_is_running 2>/dev/null || die_state "控制器启动失败：内核未运行" "clashctl logs mihomo"
+        ui_warn "控制器暂不可访问，继续开启本地代理；请稍后执行 clashctl doctor"
+      fi
     fi
   fi
 

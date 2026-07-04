@@ -236,25 +236,35 @@ controller_curl() {
   local path="$2"
   local data="${3:-}"
   local base secret
+  local curl_args=()
 
   base="$(controller_api_base)"
   secret="$(controller_secret)"
 
+  if [ -n "${CLASH_CONTROLLER_CURL_CONNECT_TIMEOUT:-}" ]; then
+    curl_args+=(--connect-timeout "$CLASH_CONTROLLER_CURL_CONNECT_TIMEOUT")
+  fi
+  if [ -n "${CLASH_CONTROLLER_CURL_MAX_TIME:-}" ]; then
+    curl_args+=(--max-time "$CLASH_CONTROLLER_CURL_MAX_TIME")
+  fi
+
   if [ -n "${data:-}" ]; then
-    curl -fsSL -X "$method" \
+    curl "${curl_args[@]}" -fsSL -X "$method" \
       -H "Content-Type: application/json" \
       ${secret:+-H "Authorization: Bearer $secret"} \
       --data "$data" \
       "$base$path"
   else
-    curl -fsSL -X "$method" \
+    curl "${curl_args[@]}" -fsSL -X "$method" \
       ${secret:+-H "Authorization: Bearer $secret"} \
       "$base$path"
   fi
 }
 
 proxy_controller_reachable() {
-  controller_curl GET "/version" >/dev/null 2>&1
+  CLASH_CONTROLLER_CURL_CONNECT_TIMEOUT="${CLASH_CONTROLLER_REACHABLE_CONNECT_TIMEOUT:-1}" \
+  CLASH_CONTROLLER_CURL_MAX_TIME="${CLASH_CONTROLLER_REACHABLE_MAX_TIME:-2}" \
+    controller_curl GET "/version" >/dev/null 2>&1
 }
 
 proxy_groups_json() {
