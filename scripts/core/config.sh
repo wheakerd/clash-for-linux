@@ -705,7 +705,7 @@ download_subscription_yaml() {
       __CLASH_DOWNLOAD_UA="$(subconverter_subscription_user_agent)" \
       download_subscription_file \
         "$url" \
-        "$out_file"
+        "$out_file" || return 1
 
       subscription_cache_store "$url" "$fmt" "$out_file" "$url"
       ;;

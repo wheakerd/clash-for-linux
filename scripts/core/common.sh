@@ -824,7 +824,8 @@ download_mirror_score() {
   case "$fail_streak" in ''|*[!0-9]*) fail_streak=0 ;; esac
 
   if [ "$label" = "origin" ]; then
-    score=$((score + 5))
+    # Prefer GitHub mirrors by default; keep origin as the final fallback.
+    score=$((score - 300))
   fi
 
   if [ "$success_at" -gt 0 ]; then
