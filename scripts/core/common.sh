@@ -2633,7 +2633,7 @@ cleanup_legacy_shell_entries() {
 }
 
 install_shell_alias_entry() {
-  local profile_file alias_file shell_rc bash_completion_file zsh_completion_file home_dir
+  local profile_file alias_file shell_rc bash_completion_file zsh_completion_file home_dir system_zsh_rc
 
   cleanup_legacy_shell_entries
 
@@ -2650,9 +2650,10 @@ cat > "$profile_file" <<EOF
 # clash-for-linux shell entry
 export PATH="$(command_install_dir):\$PATH"
 
-if [ -n "\${BASH_VERSION:-}" ] \
-  && [ -z "\${CLASH_FOR_LINUX_SHELL_LOADED:-}" ] \
-  && [ -r "$alias_file" ]; then
+if [ -z "\${CLASH_FOR_LINUX_SHELL_LOADED:-}" ] \
+  && [ -r "$alias_file" ] \
+  && { [ -n "\${BASH_VERSION:-}" ] || [ -n "\${ZSH_VERSION:-}" ]; }; then
+  export CLASH_FOR_LINUX_PROJECT_DIR="$PROJECT_DIR"
   CLASH_FOR_LINUX_SHELL_LOADED="1"
   source "$alias_file"
 fi
@@ -2675,6 +2676,13 @@ EOF
   for shell_rc in "$home_dir/.bashrc" "$home_dir/.zshrc" "$home_dir/.profile"; do
     install_rc_source_block "$shell_rc" "$profile_file"
   done
+
+  if [ "$INSTALL_SCOPE" = "system" ]; then
+    system_zsh_rc="$(system_zsh_rc_file 2>/dev/null || true)"
+    if [ -n "${system_zsh_rc:-}" ]; then
+      install_rc_source_block "$system_zsh_rc" "$profile_file"
+    fi
+  fi
 
   install_alias_command_wrappers
 }
@@ -2700,8 +2708,16 @@ remove_clashctl_entry() {
 }
 
 remove_shell_alias_entry() {
-  local profile_file
+  local profile_file system_zsh_rc
   profile_file="$(profile_entry_file)"
+
+  if [ "$INSTALL_SCOPE" = "system" ]; then
+    system_zsh_rc="$(system_zsh_rc_file 2>/dev/null || true)"
+    if [ -n "${system_zsh_rc:-}" ]; then
+      remove_rc_source_block "$system_zsh_rc"
+    fi
+  fi
+
   rm -f "$profile_file" 2>/dev/null || true
 
   if [ "$INSTALL_SCOPE" = "user" ]; then
@@ -2764,6 +2780,19 @@ profile_entry_file() {
   else
     echo "$(user_home_dir)/.config/clash-for-linux/profile.sh"
   fi
+}
+
+system_zsh_rc_file() {
+  local candidate
+
+  for candidate in /etc/zsh/zshrc /etc/zshrc; do
+    if [ -f "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 install_rc_source_block() {
