@@ -154,10 +154,11 @@ if [ "$KEEP_RUNTIME" != "true" ]; then
   echo "[ok] 已删除运行目录：$RUNTIME_DIR"
   if [ "$SYSTEM_PROXY_CLOSED" = "true" ]; then
     echo "[ok] 已关闭系统代理持久接管"
+    echo "[ok] 完整卸载：已清理服务、入口、运行目录与 controller secret"
   else
-    echo "[warn] 未能确认系统代理持久块已关闭，请检查：$(system_proxy_env_file)"
+    echo "[error] 系统代理持久块清理失败：$(system_proxy_env_file)" >&2
+    echo "[info] 已清理服务、入口、运行目录与 controller secret，但系统代理仍需处理"
   fi
-  echo "[ok] 完整卸载：已清理服务、入口、运行目录与 controller secret"
   print_uninstall_modes_hint
 elif [ "$DEV_RESET" = "true" ]; then
   cache_backup_dir="$(mktemp -d)"
@@ -198,6 +199,11 @@ else
   print_current_shell_proxy_cleanup_hint
   echo "[ok] 已卸载安装入口，保留运行目录：$RUNTIME_DIR"
   echo "[info] 保留内容：runtime 数据仍在（按 --keep-runtime 请求）"
+fi
+
+if [ "$SYSTEM_PROXY_CLOSED" != "true" ]; then
+  echo "[error] 卸载未完成：请使用有权限的用户重新执行此脚本，或手动删除 $(system_proxy_env_file) 中的 clash-for-linux 代理块" >&2
+  exit 1
 fi
 
 echo "[ok] 卸载完成"

@@ -396,6 +396,10 @@ clashls() {
   clashctl ls "$@"
 }
 
+clashsub() {
+  clashctl sub "$@"
+}
+
 clashselect() {
   clashctl select "$@"
 }

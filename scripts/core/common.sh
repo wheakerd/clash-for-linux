@@ -2599,6 +2599,7 @@ install_alias_command_wrappers() {
     clashon \
     clashoff \
     clashproxy \
+    clashsub \
     clashls \
     clashselect \
     clashui \
@@ -2897,6 +2898,7 @@ remove_alias_command_wrappers() {
     clashon \
     clashoff \
     clashproxy \
+    clashsub \
     clashls \
     clashselect \
     clashui \

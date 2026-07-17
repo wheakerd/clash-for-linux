@@ -224,7 +224,7 @@ _clash_for_linux_complete_sub() {
   COMPREPLY=()
 
   if [ "$rel_index" -eq 1 ]; then
-    _clash_for_linux_add_matches "$cur" list use set enable disable rename remove rm del health help -h --help
+    _clash_for_linux_add_matches "$cur" update list use set enable disable rename remove rm del health help -h --help
     return 0
   fi
 
@@ -339,6 +339,13 @@ _clash_for_linux_complete_command() {
       arg2="${COMP_WORDS[3]:-}"
       arg3="${COMP_WORDS[4]:-}"
       ;;
+    clashsub)
+      canonical="sub"
+      rel_index=$COMP_CWORD
+      arg1="${COMP_WORDS[1]:-}"
+      arg2="${COMP_WORDS[2]:-}"
+      arg3="${COMP_WORDS[3]:-}"
+      ;;
     clashrelay)
       canonical="relay"
       rel_index=$COMP_CWORD
@@ -396,6 +403,7 @@ _clash_for_linux_complete_command() {
 }
 
 complete -F _clash_for_linux_complete_command clashctl
+complete -F _clash_for_linux_complete_command clashsub
 complete -F _clash_for_linux_complete_command clashrelay
 complete -F _clash_for_linux_complete_command clashmixin
 complete -F _clash_for_linux_complete_command clashsecret

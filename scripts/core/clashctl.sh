@@ -39,9 +39,9 @@ Usage:
 
 📦 Subscription:
   config show                    📡 查看当前订阅
-  config regen                   🔄 更新当前订阅
+  sub update                     🔄 更新当前订阅（兼容：clashsub update）
   ls                             📜 查看订阅列表
-  sub                            📡 订阅高级管理（启用 / 禁用 / 重命名 / 删除）
+  sub                            📡 订阅管理（更新 / 启用 / 禁用 / 重命名 / 删除）
 
 🕹️  Control:
   clashui                        🕹️  查看 Web 控制台
@@ -69,6 +69,7 @@ Usage:
   completion                     💡 导出 Bash / Zsh 补全脚本
 
 📌 Advanced Examples:
+  clashctl sub update
   clashctl sub list
   clashctl sub enable hk
   clashctl sub disable hk
@@ -7047,6 +7048,12 @@ cmd_sub() {
   prepare
 
   case "${1:-}" in
+    update)
+      regenerate_config
+      apply_runtime_change_after_config_mutation
+      print_config_regen_feedback
+      print_config_apply_feedback
+      ;;
     list)
       shift || true
       cmd_ls "$@"
@@ -7101,8 +7108,9 @@ cmd_sub() {
       cmd_health "$@"
       ;;
     "")
-      ui_title "📡 订阅高级管理"
+      ui_title "📡 订阅管理"
       echo "📜 用法："
+      echo "  clashctl sub update"
       echo "  clashctl sub list"
       echo "  clashctl sub use <名称>"
       echo "  clashctl sub enable <名称>"
@@ -7112,11 +7120,12 @@ cmd_sub() {
       echo "  clashctl sub health [名称]"
       echo
       echo "🧩 说明："
-      echo "  add / use / ls 属于主路径"
+      echo "  add / use / ls / sub update 属于主路径"
       echo "  health 保留为多订阅健康审计"
-      echo "  sub 仅用于高级维护操作"
+      echo "  其他 sub 子命令用于高级维护操作"
       echo
       echo "💡 常用动作："
+      echo "  clashctl sub update"
       echo "  clashctl sub list"
       echo "  clashctl sub health"
       echo "  clashctl sub enable <名称>"
