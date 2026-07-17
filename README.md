@@ -114,6 +114,7 @@ $ clashsecret
 - 可通过浏览器打开 `Web` 控制台进行可视化操作，例如切换节点、查看日志等。
 - `clashctl secret` 与 `clashsecret` 都支持无参数查看、有参数直接设置。
 - 默认使用 [zashboard](https://github.com/Zephyruso/zashboard) 作为控制台前端，如需更换可自行配置。
+- 控制台中的“浏览器出口 IP”由访问面板的浏览器发起查询，可能与远端 Mihomo 的代理出口不同；远端出口请在服务器上通过本地代理端口查询。
 - 运行配置会把 `external-ui` 指向本地 Dashboard 目录，并把 `external-ui-url` 指向 zashboard 的 `dist.zip` 下载地址；面板内 `/upgrade/ui` 会使用该地址更新前端。
 - 若需将控制台暴露到公网，建议定期更换访问密钥，或通过 `SSH` 端口转发方式进行安全访问。
 
